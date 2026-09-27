@@ -1,0 +1,85 @@
+name: Review moderation
+
+# A review is proposed from the mod as an issue labelled "review-submission".
+# Adding "approved" publishes it, adding "rejected" closes it with a note.
+# The mod fills in the level and the author, so the player only writes text.
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  publish:
+    if: github.event.label.name == 'approved'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Save the issue body
+        env:
+          BODY: ${{ github.event.issue.body }}
+        run: printf '%s' "$BODY" > body.md
+
+      - name: Add the review to the database
+        id: apply
+        env:
+          LOGIN: ${{ github.event.issue.user.login }}
+        run: node scripts/apply-submission.mjs --body-file body.md --author "$LOGIN"
+
+      - name: Commit the database
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/reviews.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish review from issue #${{ github.event.issue.number }}"
+            git push
+          fi
+
+      - name: Confirm and close
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'Published. The review is in the database now and shows up in the mod after the next sync.'
+            })
+            github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed'
+            })
+
+  reject:
+    if: github.event.label.name == 'rejected'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Close with a note
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'Not published. Feel free to open a new issue with the changes you want.'
+            })
+            github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed'
+            })

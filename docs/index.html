@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GD Reviews</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #16161f;
+    color: #e4e4ec;
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  header { margin-bottom: 1.25rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+  #count { color: #9a9ab0; margin: 0; font-size: .9rem; }
+  input[type="search"] {
+    width: 100%;
+    padding: .65rem .9rem;
+    font-size: 1rem;
+    color: #e4e4ec;
+    background: #22222f;
+    border: 1px solid #3a3a4d;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+  }
+  input[type="search"]:focus { outline: 2px solid #6c8cff; border-color: transparent; }
+  article {
+    background: #1f1f2b;
+    border: 1px solid #2e2e3e;
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    margin-bottom: .9rem;
+  }
+  article header { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+  article strong { color: #ffd682; font-size: 1.02rem; }
+  .meta { color: #8f8fa5; font-size: .82rem; white-space: nowrap; }
+  article p { margin: .55rem 0 0; white-space: pre-wrap; word-break: break-word; }
+  .empty { color: #9a9ab0; text-align: center; padding: 2rem 0; }
+  a { color: #8cb4ff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>GD Reviews</h1>
+    <p id="count">Loading…</p>
+  </header>
+  <input id="search" type="search" placeholder="Search reviews, authors, levels…" autocomplete="off">
+  <main id="list"></main>
+</div>
+
+<script>
+  const list = document.getElementById('list');
+  const count = document.getElementById('count');
+  const search = document.getElementById('search');
+
+  let reviews = [];
+
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    const date = new Date(iso);
+    if (isNaN(date)) return '';
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function render() {
+    const query = search.value.trim().toLowerCase();
+    const filtered = reviews.filter(review => {
+      if (!query) return true;
+      return (review.author || '').toLowerCase().includes(query)
+        || (review.text || '').toLowerCase().includes(query)
+        || (review.levelName || '').toLowerCase().includes(query)
+        || String(review.levelId).includes(query);
+    });
+
+    const levels = new Set(reviews.map(review => review.levelId)).size;
+    count.textContent = reviews.length
+      ? `${reviews.length} reviews across ${levels} levels`
+      : 'No reviews yet.';
+
+    if (!filtered.length) {
+      list.innerHTML = '<p class="empty">Nothing matches that search.</p>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(review => {
+      const name = review.levelName || ('Level ' + review.levelId);
+      const meta = [review.author || 'Anonymous', formatDate(review.date)]
+        .filter(Boolean).join(' · ');
+      return `<article>
+        <header><strong>${escapeHtml(name)}</strong><span class="meta">${escapeHtml(meta)}</span></header>
+        <p>${escapeHtml(review.text)}</p>
+      </article>`;
+    }).join('');
+  }
+
+  search.addEventListener('input', render);
+
+  fetch('reviews.json')
+    .then(response => {
+      if (!response.ok) throw new Error('the server answered ' + response.status);
+      return response.json();
+    })
+    .then(data => {
+      reviews = Array.isArray(data) ? data : (data.reviews || []);
+      reviews.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      render();
+    })
+    .catch(error => {
+      count.textContent = 'The database could not be loaded.';
+      list.innerHTML = '<p class="empty">' + escapeHtml(error.message) + '</p>';
+    });
+</script>
+</body>
+</html>

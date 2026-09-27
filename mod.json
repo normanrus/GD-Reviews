@@ -8,9 +8,9 @@
     },
     "id": "normanrus.gd-reviews",
     "name": "GD Reviews",
-    "version": "v0.1.0",
+    "version": "v0.2.0",
     "developer": "NormanRus",
-    "description": "Adds a review button to every level, showing reviews from a public database.",
+    "description": "Adds a review button to every level, showing reviews from a public database and letting players propose their own.",
     "dependencies": {
         "geode.node-ids": ">=v1.23.3"
     },
@@ -19,6 +19,16 @@
             "type": "string",
             "default": "https://normanrus.github.io/GD-Reviews/reviews.json",
             "description": "URL of the reviews database"
+        },
+        "submit-url": {
+            "type": "string",
+            "default": "https://github.com/normanrus/GD-Reviews/issues/new",
+            "description": "Where 'Suggest a review' sends the player. The level and their name are filled in automatically."
+        },
+        "site-url": {
+            "type": "string",
+            "default": "https://normanrus.github.io/GD-Reviews/",
+            "description": "Public site listing every review"
         },
         "cache-minutes": {
             "type": "int",

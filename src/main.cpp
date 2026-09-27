@@ -12,6 +12,11 @@ namespace {
         if (level->m_levelName.empty()) return "Level " + std::to_string(level->m_levelID);
         return level->m_levelName;
     }
+
+    std::string reviewCount(std::size_t count) {
+        if (count == 0) return "No reviews yet";
+        return std::to_string(count) + (count == 1 ? " review" : " reviews");
+    }
 }
 
 class $modify(MyLevelInfoLayer, LevelInfoLayer) {
@@ -42,18 +47,25 @@ class $modify(MyLevelInfoLayer, LevelInfoLayer) {
 
     void onReview(CCObject*) {
         if (!m_level) {
-            gdr::ReviewPopup::create("Error", "", "Could not determine the level.")->show();
+            FLAlertLayer::create("GD Reviews", "Could not determine the level.", "OK")->show();
             return;
         }
 
         auto& store = gdr::ReviewStore::get();
         store.sync();
 
-        auto review = store.find(m_level->m_levelID);
+        auto const& reviews = store.forLevel(m_level->m_levelID);
+
+        // A failed sync is shown rather than hidden, otherwise an empty popup
+        // looks exactly like a level nobody has reviewed
+        auto failed = !store.lastError().empty();
+
         gdr::ReviewPopup::create(
             levelName(m_level),
-            review ? review->author : "",
-            review ? review->text : "No review has been written for this level yet."
+            gdr::LevelRef{ m_level->m_levelID, levelName(m_level) },
+            reviews,
+            failed ? store.lastError() : reviewCount(reviews.size()),
+            failed
         )->show();
     }
 };
