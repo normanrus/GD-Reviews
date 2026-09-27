@@ -49,9 +49,9 @@ namespace {
     }
 
     std::string trim(std::string text) {
-        auto blank = [](unsigned char c) { return std::isspace(c); };
-        text.erase(text.begin(), std::find_if(text.begin(), text.end(), blank));
-        text.erase(std::find_if(text.rbegin(), text.rend(), blank).base(), text.end());
+        auto solid = [](unsigned char c) { return !std::isspace(c); };
+        text.erase(text.begin(), std::find_if(text.begin(), text.end(), solid));
+        text.erase(std::find_if(text.rbegin(), text.rend(), solid).base(), text.end());
         return text;
     }
 
