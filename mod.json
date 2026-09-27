@@ -1,0 +1,34 @@
+{
+    "geode": "5.8.2",
+    "gd": {
+        "win": "2.2081",
+        "android": "2.2081",
+        "mac": "2.2081",
+        "ios": "2.2081"
+    },
+    "id": "normanrus.gd-reviews",
+    "name": "GD Reviews",
+    "version": "v0.1.0",
+    "developer": "NormanRus",
+    "description": "Adds a review button to every level, showing reviews from a public database.",
+    "dependencies": {
+        "geode.node-ids": ">=v1.23.3"
+    },
+    "settings": {
+        "reviews-url": {
+            "type": "string",
+            "default": "https://normanrus.github.io/gd-reviews/reviews.json",
+            "description": "URL of the reviews database"
+        }
+    },
+    "resources": {
+        "sprites": [
+            "resources/review_icon.png"
+        ],
+        "files": [
+            "reviews.txt",
+            "resources/Rubik.ttf",
+            "resources/OFL.txt"
+        ]
+    }
+}
