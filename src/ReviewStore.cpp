@@ -3,6 +3,7 @@
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/web.hpp>
 
+#include <algorithm>
 #include <charconv>
 #include <chrono>
 #include <filesystem>
@@ -15,7 +16,17 @@ namespace {
 
     constexpr std::string_view CacheName = "reviews-cache.json";
     constexpr std::string_view LocalName = "reviews.txt";
-    constexpr std::chrono::minutes CacheLifetime{15};
+
+    // 0 means the database is downloaded on every button press, which is what you
+    // want while editing it
+    std::chrono::minutes cacheLifetime() {
+        auto minutes = Mod::get()->getSettingValue<int>("cache-minutes");
+        return std::chrono::minutes(std::clamp(minutes, 0, 1440));
+    }
+
+    std::chrono::system_clock::duration cacheAge(std::time_t syncedAt) {
+        return std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t(syncedAt);
+    }
 
     std::filesystem::path savePath(std::string_view name) {
         return Mod::get()->getSaveDir() / name;
@@ -115,8 +126,10 @@ namespace gdr {
     bool ReviewStore::synced() const {
         if (!m_syncedAt) return false;
 
-        auto age = std::chrono::system_clock::now() - std::chrono::system_clock::from_time_t(*m_syncedAt);
-        return age < CacheLifetime;
+        auto lifetime = cacheLifetime();
+        if (lifetime.count() == 0) return false;
+
+        return cacheAge(*m_syncedAt) < lifetime;
     }
 
     void ReviewStore::readCache() {
@@ -147,7 +160,14 @@ namespace gdr {
     }
 
     void ReviewStore::sync() {
-        if (synced()) return;
+        if (synced()) {
+            auto spent = std::chrono::duration_cast<std::chrono::minutes>(cacheAge(*m_syncedAt));
+            log::info(
+                "Using {} cached reviews, next refresh in {} min",
+                m_reviews.size(), cacheLifetime().count() - spent.count()
+            );
+            return;
+        }
 
         auto url = Mod::get()->getSettingValue<std::string>("reviews-url");
         if (url.empty()) {
@@ -157,17 +177,25 @@ namespace gdr {
 
         auto response = web::WebRequest()
             .timeout(std::chrono::seconds(5))
-            .userAgent("GD Reviews mod")
+            .userAgent("Mozilla/5.0 (compatible; GD-Reviews/0.1)")
             .getSync(url);
 
         if (!response.ok()) {
-            log::warn("Review sync failed: {}", response.errorMessage());
+            log::warn(
+                "Review sync failed: {} -> code={} info={} error={} cancelled={} ({})",
+                url, response.code(), response.info(), response.error(),
+                response.cancelled(), response.errorMessage()
+            );
+            log::info("Review sync request log: {}", response.verboseLogs());
             return;
         }
 
         auto json = response.json();
         if (!json || !json.unwrap().isObject()) {
-            log::warn("Review sync returned malformed JSON");
+            log::warn(
+                "Review sync returned malformed JSON, code={} body={}",
+                response.code(), response.string().unwrapOr("<unreadable>")
+            );
             return;
         }
 

@@ -19,6 +19,18 @@
             "type": "string",
             "default": "https://normanrus.github.io/GD-Reviews/reviews.json",
             "description": "URL of the reviews database"
+        },
+        "cache-minutes": {
+            "type": "int",
+            "default": 15,
+            "min": 0,
+            "max": 1440,
+            "description": "Minutes to reuse the downloaded database, 0 refreshes every time",
+            "control": {
+                "input": true,
+                "arrows": true,
+                "arrow-step": 1
+            }
         }
     },
     "resources": {
