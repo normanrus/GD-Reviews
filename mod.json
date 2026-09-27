@@ -17,7 +17,7 @@
     "settings": {
         "reviews-url": {
             "type": "string",
-            "default": "https://normanrus.github.io/gd-reviews/reviews.json",
+            "default": "https://normanrus.github.io/GD-Reviews/reviews.json",
             "description": "URL of the reviews database"
         }
     },
